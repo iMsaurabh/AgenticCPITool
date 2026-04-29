@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prep": "cp .env.example .env",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
   },
