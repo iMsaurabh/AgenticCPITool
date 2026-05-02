@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "scripts": {
+    "dev": "concurrently --names \"CPI-MCP,SCHED-MCP,BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta,green,yellow\" \"npm run dev --prefix mcp-servers/cpi\" \"npm run dev --prefix mcp-servers/scheduler\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
+  }
+}
