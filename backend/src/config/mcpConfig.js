@@ -27,6 +27,12 @@ const mcpConfig = {
             url: process.env.SCHEDULER_MCP_URL || 'http://localhost:3002/mcp',
             enabled: true,
             description: 'Job scheduling and automation tools'
+        },
+        {
+            name: 'excel',
+            url: process.env.EXCEL_MCP_URL || 'http://localhost:3003/mcp',
+            enabled: true,
+            description: 'Upload, read, parse excel files'
         }
     ]
 };
