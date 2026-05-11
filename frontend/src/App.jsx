@@ -11,7 +11,7 @@ import Sidebar from './components/Layout/Sidebar'
 function App() {
   const { settings } = useSettings()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const { messages, loading, sendMessage, clearMessages } = useChat(settings)
+  const { messages, loading, sendMessage, uploadFile, clearMessages } = useChat(settings)
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -29,7 +29,7 @@ function App() {
         {/* chat area */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <ChatWindow messages={messages} loading={loading} />
-          <ChatInput onSend={sendMessage} loading={loading} />
+          <ChatInput onSend={sendMessage} onUpload={uploadFile} loading={loading} />
         </div>
 
         {/* persistent sidebar */}
