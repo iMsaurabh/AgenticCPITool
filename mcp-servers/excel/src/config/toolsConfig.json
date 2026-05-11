@@ -1,0 +1,84 @@
+{
+    "tools": [
+        {
+            "name": "parseExcelFile",
+            "description": "Parses an uploaded Excel file in the standard CPI bulk-update format (columns: ArtifactId, ParameterKey, ParameterValue, Deploy). Returns a list of artifacts with their configuration parameters grouped by ArtifactId. Use this when the user has uploaded an Excel file and wants to review or apply its contents.",
+            "operation": "parseExcelFile",
+            "parameters": [
+                {
+                    "name": "fileContent",
+                    "type": "string",
+                    "required": true,
+                    "description": "Base64-encoded Excel file content"
+                },
+                {
+                    "name": "filename",
+                    "type": "string",
+                    "required": false,
+                    "description": "Original filename, used only for logging"
+                }
+            ],
+            "mockResponse": {
+                "artifacts": [
+                    {
+                        "artifactId": "MOCK_IFLOW_001",
+                        "deploy": true,
+                        "parameters": [
+                            { "key": "Receiver_Address", "value": "http://mock-receiver" },
+                            { "key": "Sender_Path", "value": "/mock-sender" }
+                        ]
+                    },
+                    {
+                        "artifactId": "MOCK_IFLOW_002",
+                        "deploy": false,
+                        "parameters": [
+                            { "key": "Timeout", "value": "30" }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "name": "getSheetNames",
+            "description": "Returns the list of sheet names in an Excel workbook. Use this when the user wants to know what sheets are available before reading a specific one.",
+            "operation": "getSheetNames",
+            "parameters": [
+                {
+                    "name": "filePath",
+                    "type": "string",
+                    "required": true,
+                    "description": "Absolute path to the Excel file"
+                }
+            ],
+            "mockResponse": {
+                "sheets": ["Sheet1", "Sheet2"]
+            }
+        },
+        {
+            "name": "readSheet",
+            "description": "Reads raw row data from a specific sheet in an Excel workbook and returns it as an array of JSON objects. Use this when the user wants to inspect the contents of a particular sheet.",
+            "operation": "readSheet",
+            "parameters": [
+                {
+                    "name": "filePath",
+                    "type": "string",
+                    "required": true,
+                    "description": "Absolute path to the Excel file"
+                },
+                {
+                    "name": "sheetName",
+                    "type": "string",
+                    "required": false,
+                    "description": "Name of the sheet to read. Defaults to the first sheet if omitted."
+                }
+            ],
+            "mockResponse": {
+                "sheetName": "Sheet1",
+                "rows": [
+                    { "ArtifactId": "MOCK_IFLOW_001", "ParameterKey": "Receiver_Address", "ParameterValue": "http://mock-receiver", "Deploy": "Yes" },
+                    { "ArtifactId": "",               "ParameterKey": "Sender_Path",       "ParameterValue": "/mock-sender",          "Deploy": ""    }
+                ]
+            }
+        }
+    ]
+}

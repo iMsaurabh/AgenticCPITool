@@ -4,6 +4,7 @@ const logger = require('./utils/logger');
 const requestLogger = require('./middleware/requestLogger');
 const errorHandler = require('./middleware/errorHandler');
 const chatRoutes = require('./routes/chatRoutes');
+const uploadRoutes = require('./routes/uploadRoutes')
 const mcpClient = require('./mcp/mcpClient');
 
 const app = express();
@@ -22,6 +23,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', chatRoutes);
+app.use('/api', uploadRoutes);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
