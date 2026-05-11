@@ -6,6 +6,7 @@ const errorHandler = require('./middleware/errorHandler');
 const chatRoutes = require('./routes/chatRoutes');
 const uploadRoutes = require('./routes/uploadRoutes')
 const mcpClient = require('./mcp/mcpClient');
+const { startCleanupScheduler } = require('./utils/reportCleanup');
 
 const app = express();
 
@@ -33,6 +34,9 @@ async function start() {
         // initialize MCP client before accepting requests
         // this connects to all registered MCP servers and discovers tools
         await mcpClient.initialize();
+
+        //clean up scheduler to remove expired excel report files from backend/tmp
+        startCleanupScheduler();
 
         app.listen(PORT, () => {
             logger.info(`Server running on port ${PORT}`);
