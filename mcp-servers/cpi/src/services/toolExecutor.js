@@ -81,10 +81,11 @@ function buildUrl(endpoint, params, parameters) {
 
     for (const paramConfig of parameters) {
         if (paramConfig.location === 'path') {
-            const value = params[paramConfig.name];
+            const value = params[paramConfig.name] !== undefined
+                ? params[paramConfig.name]
+                : paramConfig.default;  // ← add this
             if (value !== undefined) {
                 url = url.replace(`{${paramConfig.name}}`, value);
-                // handle single quoted path params for CPI OData format
                 url = url.replace(`'{${paramConfig.name}}'`, `'${value}'`);
             }
         }
@@ -241,6 +242,9 @@ async function executeTool(toolConfig, params) {
             break
         case 'PUT':
             const putBody = buildRequestBody(cleanParams, toolConfig.parameters);
+            console.log('[Executor] PUT URL:', url);
+            console.log('[Executor] PUT Body:', JSON.stringify(putBody));
+            console.log('[Executor] PUT Params:', JSON.stringify(cleanParams));
             response = await client.put(url, putBody, requestConfig);
             break;
         default:
