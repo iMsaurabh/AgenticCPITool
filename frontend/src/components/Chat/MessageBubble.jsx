@@ -1,6 +1,8 @@
 // MessageBubble displays a single message in the conversation.
 // User messages appear on the right, agent messages on the left.
 // Agent messages show metadata below — which agent handled it.
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function MessageBubble({ message }) {
     const isUser = message.role === 'user'
@@ -19,15 +21,45 @@ function MessageBubble({ message }) {
 
                 {/* message bubble */}
                 <div className={`
-                    px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap
-                    ${isUser
+    px-4 py-3 rounded-2xl text-sm leading-relaxed
+    ${isUser
                         ? 'bg-blue-600 text-white rounded-br-sm'
                         : isError
                             ? 'bg-red-50 text-red-700 border border-red-200 rounded-bl-sm'
                             : 'bg-white text-gray-800 border border-gray-200 rounded-bl-sm shadow-sm'
                     }
-                `}>
-                    {message.content}
+`}>
+                    {isUser ? (
+                        <span className="whitespace-pre-wrap">{message.content}</span>
+                    ) : (
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                table: ({ node, ...props }) => (
+                                    <div className="overflow-x-auto my-2">
+                                        <table className="w-full border-collapse text-xs" {...props} />
+                                    </div>
+                                ),
+                                thead: ({ node, ...props }) => (
+                                    <thead className="bg-gray-50 text-gray-500 uppercase" {...props} />
+                                ),
+                                th: ({ node, ...props }) => (
+                                    <th className="px-3 py-2 text-left border border-gray-200" {...props} />
+                                ),
+                                td: ({ node, ...props }) => (
+                                    <td className="px-3 py-2 border border-gray-200" {...props} />
+                                ),
+                                tr: ({ node, ...props }) => (
+                                    <tr className="even:bg-gray-50" {...props} />
+                                ),
+                                p: ({ node, ...props }) => (
+                                    <p className="mb-2 last:mb-0 whitespace-pre-wrap" {...props} />
+                                )
+                            }}
+                        >
+                            {message.content}
+                        </ReactMarkdown>
+                    )}
                 </div>
 
                 {/* batch results table */}

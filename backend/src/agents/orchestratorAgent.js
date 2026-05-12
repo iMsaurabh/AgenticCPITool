@@ -47,7 +47,8 @@ async function run(provider, userMessage, options = {}) {
             Format lists and structured data in a readable way.
             When user confirms a previewed job with yes or confirm, immediately call createJob with the same parameters from the preview.
             Current UTC time is: ${new Date().toUTCString()}.
-            When scheduling jobs, use this as the reference for current time.`
+            When scheduling jobs, use this as the reference for current time.
+            When responding with list or tabular data such as artifacts, logs, or statuses, always format it as a Markdown table.`
         },
         ...historyMessages,
         { role: 'user', content: userMessage }
