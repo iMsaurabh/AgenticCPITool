@@ -2,6 +2,68 @@ version: '3.8'
 
 services:
 
+  cpi-mcp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.cpi
+    container_name: cpi-mcp-server
+    ports:
+      - "3001:3001"
+    env_file:
+      - ../mcp-servers/cpi/.env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  scheduler-mcp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.scheduler
+    container_name: scheduler-mcp-server
+    ports:
+      - "3002:3002"
+    env_file:
+      - ../mcp-servers/scheduler/.env
+    environment:
+      - NODE_ENV=production
+      # override localhost URL from .env — Docker resolves service names, not localhost
+      - CPI_MCP_URL=http://cpi-mcp:3001
+    depends_on:
+      cpi-mcp:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  excel-mcp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.excel
+    container_name: excel-mcp-server
+    ports:
+      - "3003:3003"
+    env_file:
+      - ../mcp-servers/excel/.env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   backend:
     build:
       context: ..
@@ -13,10 +75,28 @@ services:
       - ../backend/.env
     environment:
       - NODE_ENV=production
+      # host.docker.internal resolves to the host machine — used for Ollama
+      # on Linux this requires the extra_hosts entry below; works automatically on Docker Desktop
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # override localhost MCP URLs from .env with Docker service names
+      - CPI_MCP_URL=http://cpi-mcp:3001/mcp
+      - SCHEDULER_MCP_URL=http://scheduler-mcp:3002/mcp
+      - EXCEL_MCP_URL=http://excel-mcp:3003/mcp
+    extra_hosts:
+      # makes host.docker.internal resolve on Linux — no-op on Docker Desktop
+      - "host.docker.internal:host-gateway"
     volumes:
       - ../backend/logs:/app/logs
       - ../backend/src/config/loggingConfig.js:/app/src/config/loggingConfig.js
+      # report files written by generateReport() — mounted so they survive restarts
+      - ../backend/tmp:/app/tmp
+    depends_on:
+      cpi-mcp:
+        condition: service_healthy
+      scheduler-mcp:
+        condition: service_healthy
+      excel-mcp:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health" ]
