@@ -25,6 +25,7 @@ router.post('/chat', async (req, res, next) => {
         )
         return responseFormatter.success(res, result)
     } catch (err) {
+        console.error('[ChatRoutes] Error:', err.message, err.status)
         next(err)
     }
 })

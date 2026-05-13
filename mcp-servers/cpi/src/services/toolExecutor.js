@@ -28,30 +28,36 @@ function getMockMode() {
 }
 
 async function getAccessToken() {
-    const now = Date.now();
+    try {
+        const now = Date.now();
 
-    if (tokenCache.accessToken && tokenCache.expiresAt > now) {
-        return tokenCache.accessToken;
-    }
-
-    const response = await axios.post(
-        process.env.CPI_TOKEN_URL,
-        new URLSearchParams({ grant_type: 'client_credentials' }),
-        {
-            auth: {
-                username: process.env.CPI_CLIENT_ID,
-                password: process.env.CPI_CLIENT_SECRET
-            },
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        if (tokenCache.accessToken && tokenCache.expiresAt > now) {
+            return tokenCache.accessToken;
         }
-    );
 
-    tokenCache = {
-        accessToken: response.data.access_token,
-        expiresAt: now + (response.data.expires_in - 60) * 1000
-    };
+        const response = await axios.post(
+            process.env.CPI_TOKEN_URL,
+            new URLSearchParams({ grant_type: 'client_credentials' }),
+            {
+                auth: {
+                    username: process.env.CPI_CLIENT_ID,
+                    password: process.env.CPI_CLIENT_SECRET
+                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            }
+        );
 
-    return tokenCache.accessToken;
+        tokenCache = {
+            accessToken: response.data.access_token,
+            expiresAt: now + (response.data.expires_in - 60) * 1000
+        };
+
+        return tokenCache.accessToken;
+
+    } catch (err) {
+        console.error('[Executor] Token fetch failed:', err.response?.status, err.response?.data);
+        throw err;
+    }
 }
 
 function getApiClient(accessToken) {

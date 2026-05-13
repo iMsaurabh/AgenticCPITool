@@ -121,10 +121,35 @@
             "method": "GET",
             "requiresCsrf": false,
             "parameters": [],
-            "mockResponse": {
-                "status": "SUCCESS",
-                "message": "listArtifacts executed successfully"
-            }
+            "mockResponse": [
+                {
+                    "Id": "MOCK_IFLOW_001",
+                    "Name": "Order Processing Flow",
+                    "Description": "Processes incoming orders from the system",
+                    "Type": "IntegrationFlow",
+                    "Status": "DEPLOYED",
+                    "DeployedBy": "admin",
+                    "DeployedOn": "2026-05-10T08:30:00Z"
+                },
+                {
+                    "Id": "MOCK_IFLOW_002",
+                    "Name": "Invoice Export",
+                    "Description": "Exports invoices to external system",
+                    "Type": "IntegrationFlow",
+                    "Status": "DEPLOYED",
+                    "DeployedBy": "integration_user",
+                    "DeployedOn": "2026-05-09T14:15:00Z"
+                },
+                {
+                    "Id": "MOCK_IFLOW_003",
+                    "Name": "Customer Data Sync",
+                    "Description": "Synchronizes customer data between systems",
+                    "Type": "IntegrationFlow",
+                    "Status": "DEPLOYED",
+                    "DeployedBy": "automation_service",
+                    "DeployedOn": "2026-05-08T10:45:00Z"
+                }
+            ]
         },
         {
             "name": "getIFlowConfigurations",
