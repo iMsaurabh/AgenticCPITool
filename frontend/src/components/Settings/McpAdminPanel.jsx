@@ -219,11 +219,17 @@ function ToolCard({ tool, serverUrl, onToolRemoved }) {
                 <p className="text-xs font-medium text-gray-800 truncate">{tool.name}</p>
                 <p className="text-xs text-gray-400 truncate">{tool.description}</p>
                 <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                        tool.method === 'GET'    ? 'bg-blue-100 text-blue-700' :
+                        tool.method === 'POST'   ? 'bg-green-100 text-green-700' :
+                        tool.method === 'PUT'    ? 'bg-amber-100 text-amber-700' :
+                        tool.method === 'DELETE' ? 'bg-red-100 text-red-700' :
+                                                   'bg-gray-100 text-gray-600'
+                    }`}>
                         {tool.method}
                     </span>
                     {tool.requiresCsrf && (
-                        <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                        <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">
                             CSRF
                         </span>
                     )}

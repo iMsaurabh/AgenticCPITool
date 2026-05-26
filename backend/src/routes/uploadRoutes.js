@@ -19,7 +19,7 @@ router.post('/chat/upload', upload.single('file'), async (req, res, next) => {
         const parsed = await mcpClient.callTool('parseExcelFile', { fileContent, filename });
         const results = await batchExecutionAgent.run(parsed.artifacts);
 
-        const reportFilename = generateReport(filename, results);
+        const reportFilename = await generateReport(filename, results);
 
         res.json({
             success: true,

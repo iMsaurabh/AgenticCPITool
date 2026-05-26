@@ -135,12 +135,12 @@ function MessageBubble({ message }) {
                 {!isUser && !isError && message.metadata && (
                     <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
                         {message.metadata.delegatedTo?.length > 0 && (
-                            <span className="bg-gray-100 px-2 py-0.5 rounded-full">
+                            <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                                 {message.metadata.delegatedTo.join(', ')}
                             </span>
                         )}
                         {message.metadata.iterations && (
-                            <span className="bg-gray-100 px-2 py-0.5 rounded-full">
+                            <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                                 {message.metadata.iterations} {message.metadata.iterations === 1 ? 'step' : 'steps'}
                             </span>
                         )}

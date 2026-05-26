@@ -1,11 +1,10 @@
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
 
 const TMP_DIR = path.join(__dirname, '../../tmp');
 
-function generateReport(filename, results) {
-    // flatten results into rows
+async function generateReport(filename, results) {
     const rows = [];
 
     for (const artifact of results) {
@@ -22,17 +21,26 @@ function generateReport(filename, results) {
         }
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Results');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Results');
 
-    // ensure tmp dir exists
+    worksheet.columns = [
+        { header: 'ArtifactId', key: 'ArtifactId' },
+        { header: 'ParameterKey', key: 'ParameterKey' },
+        { header: 'ParameterValue', key: 'ParameterValue' },
+        { header: 'ParameterStatus', key: 'ParameterStatus' },
+        { header: 'ParameterError', key: 'ParameterError' },
+        { header: 'DeployStatus', key: 'DeployStatus' },
+        { header: 'DeployError', key: 'DeployError' }
+    ];
+
+    worksheet.addRows(rows);
+
     if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
     const reportFilename = `report_${Date.now()}.xlsx`;
     const reportPath = path.join(TMP_DIR, reportFilename);
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    fs.writeFileSync(reportPath, buffer);
+    await workbook.xlsx.writeFile(reportPath);
 
     return reportFilename;
 }

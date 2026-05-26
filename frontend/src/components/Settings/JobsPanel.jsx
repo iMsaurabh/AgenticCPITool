@@ -354,12 +354,6 @@ function JobHistoryModal({ job, onClose }) {
       .finally(() => setLoading(false))
   }, [job.id])
 
-  const statusColors = {
-    SUCCESS: 'text-green-700 bg-green-100',
-    FAILED: 'text-red-700 bg-red-100',
-    RETRYING: 'text-amber-700 bg-amber-100'
-  }
-
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl p-5 max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
@@ -384,7 +378,12 @@ function JobHistoryModal({ job, onClose }) {
           {!loading && history.map(exec => (
             <div key={exec.id} className="border border-gray-200 rounded-lg p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${statusColors[exec.status] || 'text-gray-600 bg-gray-100'}`}>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                  exec.status === 'SUCCESS' ? 'text-green-700 bg-green-100' :
+                  exec.status === 'FAILED'  ? 'text-red-700 bg-red-100' :
+                  exec.status === 'RETRYING'? 'text-amber-700 bg-amber-100' :
+                                              'text-gray-600 bg-gray-100'
+                }`}>
                   {exec.status}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -413,12 +412,6 @@ function JobCard({ job, onRefresh }) {
   const [historyModal, setHistoryModal] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [deleting, setDeleting] = useState(false)
-
-  const statusColors = {
-    SUCCESS: 'text-green-700',
-    FAILED: 'text-red-600',
-    RETRYING: 'text-amber-600'
-  }
 
   async function handleToggle() {
     setToggling(true)
@@ -520,7 +513,12 @@ function JobCard({ job, onRefresh }) {
 
         {/* last status */}
         {job.lastStatus && (
-          <p className={`text-xs font-medium mb-2 ${statusColors[job.lastStatus] || 'text-gray-500'}`}>
+          <p className={`text-xs font-medium mb-2 ${
+            job.lastStatus === 'SUCCESS'  ? 'text-green-700' :
+            job.lastStatus === 'FAILED'   ? 'text-red-600' :
+            job.lastStatus === 'RETRYING' ? 'text-amber-600' :
+                                            'text-gray-500'
+          }`}>
             Last run: {job.lastStatus}
             {job.lastRun && ` · ${new Date(job.lastRun).toLocaleString()}`}
           </p>

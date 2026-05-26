@@ -1,12 +1,12 @@
 // toolExecutor is the execution engine for all Excel tool calls.
 // When the MCP server receives a tool call from the agent:
 //   1. Checks USE_MOCK — returns mockResponse if true
-//   2. Otherwise dispatches to the xlsx handler for the requested operation
+//   2. Otherwise dispatches to the exceljs handler for the requested operation
 //
 // Operations are identified by toolConfig.operation, not HTTP method/endpoint.
 // Adding a new tool to toolsConfig.json + a matching handler here enables it.
 
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 
 function getMockMode() {
     try {
@@ -16,16 +16,37 @@ function getMockMode() {
     }
 }
 
+// worksheetToRows converts an ExcelJS worksheet into an array of plain objects
+// using the first row as headers, matching xlsx's sheet_to_json({ defval: '' }) behavior.
+function worksheetToRows(worksheet, defval = '') {
+    const headers = [];
+    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell) => {
+        headers.push(cell.value != null ? cell.value.toString() : '');
+    });
+
+    const rows = [];
+    worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const rowObj = {};
+        headers.forEach((header, idx) => {
+            const cell = row.getCell(idx + 1);
+            rowObj[header] = cell.value != null ? cell.value.toString() : defval;
+        });
+        rows.push(rowObj);
+    });
+    return rows;
+}
+
 // parseExcelFile replicates the backend's forwardFillAndGroup logic so the
 // agent sees the same grouped structure the frontend receives after an upload.
 // fileContent is a base64 string sent by the backend upload route.
-function parseExcelFile({ fileContent, filename }) {
+async function parseExcelFile({ fileContent, filename }) {
     console.log(`[Executor] Parsing excel file: ${filename || '(unnamed)'}`);
     const buffer = Buffer.from(fileContent, 'base64');
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+    const rows = worksheetToRows(worksheet);
 
     // forward-fill ArtifactId across merged rows
     let lastArtifactId = '';
@@ -60,22 +81,26 @@ function parseExcelFile({ fileContent, filename }) {
     return { artifacts: Object.values(grouped) };
 }
 
-function getSheetNames({ filePath }) {
-    const workbook = XLSX.readFile(filePath);
-    return { sheets: workbook.SheetNames };
+async function getSheetNames({ filePath }) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    return { sheets: workbook.worksheets.map(ws => ws.name) };
 }
 
-function readSheet({ filePath, sheetName }) {
-    const workbook = XLSX.readFile(filePath);
-    const name = sheetName || workbook.SheetNames[0];
-    const sheet = workbook.Sheets[name];
+async function readSheet({ filePath, sheetName }) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
 
-    if (!sheet) {
-        throw new Error(`Sheet "${name}" not found in workbook`);
+    const worksheet = sheetName
+        ? workbook.getWorksheet(sheetName)
+        : workbook.worksheets[0];
+
+    if (!worksheet) {
+        throw new Error(`Sheet "${sheetName}" not found in workbook`);
     }
 
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    return { sheetName: name, rows };
+    const rows = worksheetToRows(worksheet);
+    return { sheetName: worksheet.name, rows };
 }
 
 const handlers = { parseExcelFile, getSheetNames, readSheet };
