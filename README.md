@@ -82,8 +82,6 @@ All operations use **OAuth 2.0 Client Credentials** flow and handle CSRF tokens 
 
 ### 3. Excel-Driven Bulk Operations
 
-![Excel file upload button in chat input](./img/ss2.png)
-
 One of the more practical additions to the MVP — upload an Excel file in the chat to drive bulk parameter updates across multiple iFlows. The system reads the file, updates each iFlow's parameters in sequence, deploys the ones you've flagged, and generates a downloadable report.
 
 **Excel format:**
