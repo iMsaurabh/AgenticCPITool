@@ -60,6 +60,33 @@
       "lastRun": "2026-04-19T11:15:07.201Z",
       "nextRun": null,
       "lastStatus": "SUCCESS"
+    },
+    {
+      "id": "job_1779985779051",
+      "name": "Deploy demo artifact",
+      "tool": "deployArtifact",
+      "parameters": {
+        "artifactId": "demo"
+      },
+      "schedule": {
+        "frequency": "once",
+        "days": [],
+        "time": "10:00",
+        "dayOfMonth": 29,
+        "timezone": "UTC",
+        "cron": "0 10 * * *"
+      },
+      "retry": {
+        "enabled": true,
+        "maxRetries": 2,
+        "delayMinutes": 2,
+        "timeoutSeconds": 30
+      },
+      "enabled": true,
+      "createdAt": "2026-05-28T16:29:39.051Z",
+      "lastRun": null,
+      "nextRun": null,
+      "lastStatus": null
     }
   ]
 }

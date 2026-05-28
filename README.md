@@ -52,7 +52,7 @@ Under the hood, the system uses a multi-agent architecture built on the **Model 
 
 ### 1. Natural Language Chat Interface
 
-> *[SCREENSHOT: Chat UI with a question and table response]*
+![Chat UI with a question and table response](./img/ss1.png)
 
 Ask questions and give instructions the way you'd talk to a colleague. Responses containing lists or structured data are automatically formatted as tables.
 
@@ -62,8 +62,7 @@ This is the core of the MVP — the chat loop works reliably for the supported o
 
 ### 2. Core CPI Operations
 
-> *[SCREENSHOT: List of available tools in the admin panel]*
-
+![List of available tools in the admin panel](./img/ss2.png)
 The following CPI operations are wired up and tested against a real CPI trial tenant:
 
 | Operation | What It Does |
@@ -83,7 +82,7 @@ All operations use **OAuth 2.0 Client Credentials** flow and handle CSRF tokens 
 
 ### 3. Excel-Driven Bulk Operations
 
-> *[SCREENSHOT: Excel file upload button in chat input]*
+![Excel file upload button in chat input](./img/ss2.png)
 
 One of the more practical additions to the MVP — upload an Excel file in the chat to drive bulk parameter updates across multiple iFlows. The system reads the file, updates each iFlow's parameters in sequence, deploys the ones you've flagged, and generates a downloadable report.
 
@@ -99,7 +98,7 @@ One of the more practical additions to the MVP — upload an Excel file in the c
 - `Deploy = yes` triggers deployment after all parameters for that iFlow are updated
 - If any parameter update fails, deployment is skipped for that iFlow to avoid partial states
 
-> *[SCREENSHOT: Batch results table rendered in chat after upload]*
+![batch result table](./img/ss4.png)
 
 A downloadable Excel report is generated at the end showing the outcome of every operation.
 
@@ -107,15 +106,15 @@ A downloadable Excel report is generated at the end showing the outcome of every
 
 ### 4. Scheduled Jobs
 
-> *[SCREENSHOT: Jobs panel in sidebar]*
+![Jobs panel in sidebar](./img/ss5.png)
 
 Schedule any CPI operation to run automatically via chat:
 
-> *"Deploy MyIFlow every Monday at 9am UTC"*
+![Scheduled tasks](./img/ss6.png)
 
 The AI previews the job for your confirmation before creating it. Jobs run in the background and send real-time notifications when they complete.
 
-> *[SCREENSHOT: Toast notification for completed job]*
+> *[SCREENSHOT: Toast notification for completed job]* >> need to revisit this.
 
 This is an early-stage feature — the scheduling engine works, but job persistence across restarts and more advanced scheduling options are on the backlog.
 
@@ -123,7 +122,7 @@ This is an early-stage feature — the scheduling engine works, but job persiste
 
 ### 5. Dynamic Tool Management
 
-> *[SCREENSHOT: MCP Admin panel with tool list]*
+![MCP Admin panel with tool list](./img/ss8.png)
 
 New CPI operations can be added without touching application code. Each tool is defined in a JSON configuration file — add a new entry, reload, and it becomes available to the AI immediately.
 
@@ -139,7 +138,9 @@ This is built on the **Model Context Protocol (MCP)**. The application runs thre
 
 ### 6. AI Provider Flexibility
 
-> *[SCREENSHOT: Provider dropdown in settings]*
+>This section is still under development.
+
+![Provider dropdown in settings](./img/ss9.png)
 
 The AI engine is swappable via settings — no code changes needed. The MVP supports:
 

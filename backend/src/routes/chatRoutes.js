@@ -3,6 +3,7 @@ const router = express.Router();
 const { getProvider, getSupportedProviders } = require('../providers/providerFactory');
 const orchestrator = require('../agents/orchestratorAgent');
 const responseFormatter = require('../utils/responseFormatter');
+const axios = require('axios');
 
 const mcpClient = require('../mcp/mcpClient');
 
@@ -23,6 +24,46 @@ router.post('/chat', async (req, res, next) => {
             message.trim(),
             { mockMode, history: history || [] }
         )
+
+        // send notifications for certain tool executions
+        console.log('[ChatRoutes] delegatedTo:', result.delegatedTo);
+        if (result.delegatedTo && result.delegatedTo.length > 0) {
+            const schedulerUrl = process.env.SCHEDULER_MCP_URL || 'http://localhost:3002';
+            console.log('[ChatRoutes] Scheduler URL:', schedulerUrl);
+
+            // notify for deployment operations
+            if (result.delegatedTo.includes('deployArtifact')) {
+                console.log('[ChatRoutes] Sending deployment notification to scheduler');
+                try {
+                    const notifyResponse = await axios.post(`${schedulerUrl}/notify`, {
+                        type: 'operation:completed',
+                        title: 'Deployment Triggered',
+                        message: 'Artifact deployment has been initiated',
+                        status: 'success'
+                    });
+                    console.log('[ChatRoutes] Deployment notification sent successfully');
+                } catch (err) {
+                    console.error('[ChatRoutes] Failed to send deployment notification:', err.message);
+                }
+            }
+
+            // notify for undeployment operations
+            if (result.delegatedTo.includes('undeployArtifact')) {
+                console.log('[ChatRoutes] Sending undeployment notification to scheduler');
+                try {
+                    const notifyResponse = await axios.post(`${schedulerUrl}/notify`, {
+                        type: 'operation:completed',
+                        title: 'Undeployment Triggered',
+                        message: 'Artifact undeployment has been initiated',
+                        status: 'info'
+                    });
+                    console.log('[ChatRoutes] Undeployment notification sent successfully');
+                } catch (err) {
+                    console.error('[ChatRoutes] Failed to send undeployment notification:', err.message);
+                }
+            }
+        }
+
         return responseFormatter.success(res, result)
     } catch (err) {
         console.error('[ChatRoutes] Error:', err.message, err.status)

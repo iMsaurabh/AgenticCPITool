@@ -125,6 +125,35 @@ export function NotificationProvider({ children }) {
         console.log('[SSE] Connected to scheduler')
         break
 
+      case 'operation:completed':
+        // blue toast — operation executed successfully
+        addToast({
+          status: data.status || 'info',
+          title: data.title,
+          message: data.message
+        })
+        addNotification({
+          status: data.status || 'info',
+          title: data.title,
+          message: data.message
+        })
+        break
+
+      case 'job:scheduled':
+        // blue toast — job successfully scheduled
+        addToast({
+          status: 'info',
+          title: data.job.name,
+          message: `Scheduled${data.job.schedule.frequency === 'once' ? ' to run now' : ''}`
+        })
+        addNotification({
+          status: 'info',
+          title: `${data.job.name} scheduled`,
+          message: `Frequency: ${data.job.schedule.frequency}`,
+          jobs: [data.job]
+        })
+        break
+
       case 'job:started':
         // subtle gray toast — job is running
         addToast({

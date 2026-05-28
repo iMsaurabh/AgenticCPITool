@@ -166,74 +166,121 @@ app.get('/admin/executions', (req, res) => {
 
 // admin — toggle job enabled/disabled
 app.post('/admin/jobs/:jobId/toggle', (req, res) => {
-  try {
-    const { enabled } = req.body;
-    const job = jobStore.getJobById(req.params.jobId);
-    if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
+    try {
+        const { enabled } = req.body;
+        const job = jobStore.getJobById(req.params.jobId);
+        if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
 
-    jobStore.updateJob(req.params.jobId, { enabled });
+        jobStore.updateJob(req.params.jobId, { enabled });
 
-    if (enabled) {
-      jobScheduler.startJob({ ...job, enabled: true });
-    } else {
-      jobScheduler.stopJob(req.params.jobId);
+        if (enabled) {
+            jobScheduler.startJob({ ...job, enabled: true });
+        } else {
+            jobScheduler.stopJob(req.params.jobId);
+        }
+
+        res.json({ success: true, enabled });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
-
-    res.json({ success: true, enabled });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
 });
 
 // admin — delete a job
 app.delete('/admin/jobs/:jobId', (req, res) => {
-  try {
-    const job = jobStore.getJobById(req.params.jobId);
-    if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
+    try {
+        const job = jobStore.getJobById(req.params.jobId);
+        if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
 
-    jobScheduler.stopJob(req.params.jobId);
-    jobStore.deleteJob(req.params.jobId);
+        jobScheduler.stopJob(req.params.jobId);
+        jobStore.deleteJob(req.params.jobId);
 
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // admin — run job immediately
 app.post('/admin/jobs/:jobId/run', async (req, res) => {
-  try {
-    const { keepSchedule } = req.body;
-    const job = jobStore.getJobById(req.params.jobId);
-    if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
+    try {
+        const { keepSchedule } = req.body;
+        const job = jobStore.getJobById(req.params.jobId);
+        if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
 
-    // run async — respond immediately
-    jobScheduler.runJobNow(req.params.jobId, keepSchedule !== false)
-      .catch(err => console.error('[Admin] runJobNow error:', err.message));
+        // run async — respond immediately
+        jobScheduler.runJobNow(req.params.jobId, keepSchedule !== false)
+            .catch(err => console.error('[Admin] runJobNow error:', err.message));
 
-    res.json({ success: true, message: `Job "${job.name}" triggered` });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+        res.json({ success: true, message: `Job "${job.name}" triggered` });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // admin — create job directly from UI
 app.post('/admin/jobs', (req, res) => {
-  try {
-    const jobConfig = req.body;
+    try {
+        const jobConfig = req.body;
 
-    // build cron expression from schedule config
-    const cron = jobScheduler.buildCronExpression(jobConfig.schedule);
-    jobConfig.schedule.cron = cron;
-    jobConfig.schedule.timezone = 'UTC';
+        // build cron expression from schedule config
+        const cron = jobScheduler.buildCronExpression(jobConfig.schedule);
+        jobConfig.schedule.cron = cron;
+        jobConfig.schedule.timezone = 'UTC';
 
-    const job = jobStore.createJob(jobConfig);
-    jobScheduler.startJob(job);
+        const job = jobStore.createJob(jobConfig);
+        jobScheduler.startJob(job);
 
-    res.status(201).json({ success: true, job });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
+        // broadcast job:scheduled event to notify frontend
+        sseManager.broadcastJobScheduled(job);
+
+        // if frequency is 'once' and time is soon, run immediately
+        if (jobConfig.schedule.frequency === 'once') {
+            const [hour, minute] = (jobConfig.schedule.time || '').split(':').map(Number);
+            if (!isNaN(hour) && !isNaN(minute)) {
+                const now = new Date();
+                const scheduled = new Date();
+                scheduled.setUTCHours(hour, minute, 0, 0);
+
+                // if scheduled time is within next 60 seconds, run immediately
+                const timeUntilRun = scheduled.getTime() - now.getTime();
+                if (timeUntilRun >= 0 && timeUntilRun <= 60000) {
+                    jobScheduler.runJobNow(job.id, false)
+                        .catch(err => console.error('[Admin] Immediate execution error:', err.message));
+                }
+            }
+        }
+
+        res.status(201).json({ success: true, job });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+});
+
+// admin — broadcast a custom notification to frontend
+// used by backend to notify about tool execution results
+app.post('/notify', (req, res) => {
+    try {
+        const { type, title, message, status } = req.body;
+
+        if (!type || !title) {
+            return res.status(400).json({ success: false, error: 'type and title are required' });
+        }
+
+        console.log(`[Notify] Broadcasting ${type}: "${title}" to ${sseManager.getClientCount()} clients`);
+
+        sseManager.broadcast({
+            type: type,
+            title: title,
+            message: message || '',
+            status: status || 'info',
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error(`[Notify] Error:`, err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // initialize and start

@@ -45,6 +45,8 @@ async function run(provider, userMessage, options = {}) {
             When a tool returns results, always present the data clearly and completely to the user.
             Never say you do not have access to results — if a tool was called, use its output in your response.
             Format lists and structured data in a readable way.
+            When scheduling a job, you must always ask for user confirmation to ahead with scheduling. Show user a preview of the job with its details to confirm.
+            Do not schedule a job as a recurring task unless user explicitely asks you do it.
             When user confirms a previewed job with yes or confirm, immediately call createJob with the same parameters from the preview.
             Current UTC time is: ${new Date().toUTCString()}.
             When scheduling jobs, use this as the reference for current time.

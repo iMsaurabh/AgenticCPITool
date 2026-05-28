@@ -4,6 +4,7 @@
 
 const jobStore = require('./jobStore');
 const jobScheduler = require('./jobScheduler');
+const sseManager = require('../utils/sseManager');
 
 // buildCronExpression is imported to include in preview
 const { buildCronExpression } = require('./jobScheduler');
@@ -107,6 +108,26 @@ const schedulerToolExecutor = {
         });
 
         jobScheduler.startJob(job);
+
+        // broadcast job:scheduled event to notify frontend
+        sseManager.broadcastJobScheduled(job);
+
+        // if frequency is 'once' and time is soon, run immediately
+        if (schedule.frequency === 'once') {
+            const [hour, minute] = (schedule.time || '').split(':').map(Number);
+            if (!isNaN(hour) && !isNaN(minute)) {
+                const now = new Date();
+                const scheduled = new Date();
+                scheduled.setUTCHours(hour, minute, 0, 0);
+
+                // if scheduled time is within next 60 seconds, run immediately
+                const timeUntilRun = scheduled.getTime() - now.getTime();
+                if (timeUntilRun >= 0 && timeUntilRun <= 60000) {
+                    jobScheduler.runJobNow(job.id, false)
+                        .catch(err => console.error('[Executor] Immediate execution error:', err.message));
+                }
+            }
+        }
 
         return {
             success: true,

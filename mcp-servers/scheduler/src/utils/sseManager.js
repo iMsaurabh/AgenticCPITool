@@ -105,6 +105,20 @@ function broadcastJobRetry(job, attempt, maxAttempts, nextRetryAt) {
     });
 }
 
+// broadcastJobScheduled fires when a job is successfully created and scheduled
+function broadcastJobScheduled(job) {
+    broadcast({
+        type: 'job:scheduled',
+        job: {
+            id: job.id,
+            name: job.name,
+            tool: job.tool,
+            schedule: job.schedule
+        },
+        timestamp: new Date().toISOString()
+    });
+}
+
 function getClientCount() {
     return clients.size;
 }
@@ -116,5 +130,6 @@ module.exports = {
     broadcastJobStarted,
     broadcastJobComplete,
     broadcastJobRetry,
+    broadcastJobScheduled,
     getClientCount
 };
