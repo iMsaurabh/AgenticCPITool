@@ -108,4 +108,25 @@ router.get('/mcp/servers', async (req, res, next) => {
     }
 });
 
+// POST /api/environment
+// Receives CPI credentials from the frontend and forwards them to the CPI MCP
+// server's in-memory credential store. The backend acts as a secure proxy so
+// the frontend never talks directly to the CPI MCP admin endpoints.
+router.post('/environment', async (req, res, next) => {
+    try {
+        const { cpiBaseUrl, tokenUrl, clientId, clientSecret } = req.body;
+
+        if (!cpiBaseUrl || !tokenUrl || !clientId || !clientSecret) {
+            return res.status(400).json({ success: false, error: 'All credential fields are required' });
+        }
+
+        const cpiMcpBase = (process.env.CPI_MCP_URL || 'http://localhost:3001/mcp').replace('/mcp', '');
+        await axios.post(`${cpiMcpBase}/admin/credentials`, { cpiBaseUrl, tokenUrl, clientId, clientSecret });
+
+        return responseFormatter.success(res, { message: 'Credentials pushed to CPI MCP server' });
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;

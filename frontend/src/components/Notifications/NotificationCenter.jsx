@@ -1,18 +1,11 @@
-// NotificationCenter provides two components:
-//   NotificationBubble — bell icon with unread count badge
-//   NotificationPanel  — slide-in panel with notification history
-//
-// Bubble shows in header. Panel opens when bubble is clicked.
-// Unread count resets when panel is opened.
-
 import { useState } from 'react'
 import { useNotifications } from '../../context/NotificationContext'
 
 const STATUS_COLORS = {
-  success: 'bg-green-100 text-green-800 border-green-200',
-  error: 'bg-red-100 text-red-800 border-red-200',
-  warning: 'bg-amber-100 text-amber-800 border-amber-200',
-  info: 'bg-gray-100 text-gray-800 border-gray-200'
+  success: 'bg-green-50 text-green-800 border-green-200',
+  error: 'bg-red-50 text-red-800 border-red-200',
+  warning: 'bg-amber-50 text-amber-800 border-amber-200',
+  info: 'bg-slate-50 text-slate-800 border-slate-200'
 }
 
 const STATUS_ICONS = {
@@ -32,10 +25,9 @@ function NotificationItem({ notification }) {
       className={`
         border rounded-lg p-3 text-sm
         ${colorClass}
-        ${!notification.read ? 'ring-1 ring-blue-400' : ''}
+        ${!notification.read ? 'ring-1 ring-indigo-300' : ''}
       `}
     >
-      {/* header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="font-bold flex-shrink-0">{icon}</span>
@@ -61,7 +53,6 @@ function NotificationItem({ notification }) {
         </div>
       </div>
 
-      {/* expanded batch details */}
       {expanded && notification.jobs && (
         <div className="mt-2 space-y-1 border-t border-current/20 pt-2">
           {notification.jobs.map((job, i) => (
@@ -84,26 +75,23 @@ export function NotificationBubble({ onClick }) {
   return (
     <button
       onClick={onClick}
-      className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
+      className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
       title="Notifications"
     >
-      {/* bell icon */}
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </svg>
 
-      {/* unread count badge */}
       {unreadCount > 0 && (
         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-4 h-4 flex items-center justify-center px-1 font-bold">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
 
-      {/* SSE connection indicator */}
       <span className={`
         absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full
-        ${sseConnected ? 'bg-green-500' : 'bg-gray-300'}
+        ${sseConnected ? 'bg-green-500' : 'bg-slate-300'}
       `} />
     </button>
   )
@@ -112,41 +100,38 @@ export function NotificationBubble({ onClick }) {
 export function NotificationPanel({ onClose }) {
   const { notifications, unreadCount, markAllRead } = useNotifications()
 
-  // mark all read when panel opens
   useState(() => {
     if (unreadCount > 0) markAllRead()
   })
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full">
+    <div className="w-80 bg-white border-l border-[#e2e8f0] flex flex-col h-full">
 
-      {/* header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-        <h2 className="font-semibold text-gray-800">Notifications</h2>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#e2e8f0]">
+        <h2 className="font-semibold text-[#0f172a] text-sm">Notifications</h2>
         <div className="flex items-center gap-2">
           {notifications.length > 0 && (
             <button
               onClick={markAllRead}
-              className="text-xs text-blue-600 hover:text-blue-700"
+              className="text-xs text-indigo-500 hover:text-indigo-600"
             >
               Mark all read
             </button>
           )}
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-[#94a3b8] hover:text-slate-600"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12"/>
+              <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
       </div>
 
-      {/* notification list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {notifications.length === 0 && (
-          <div className="text-center text-gray-400 mt-8">
+          <div className="text-center text-[#94a3b8] mt-8">
             <p className="text-sm">No notifications yet</p>
             <p className="text-xs mt-1">Job completions will appear here</p>
           </div>

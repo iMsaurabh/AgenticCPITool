@@ -50,7 +50,8 @@ async function run(provider, userMessage, options = {}) {
             When user confirms a previewed job with yes or confirm, immediately call createJob with the same parameters from the preview.
             Current UTC time is: ${new Date().toUTCString()}.
             When scheduling jobs, use this as the reference for current time.
-            When responding with list or tabular data such as artifacts, logs, or statuses, always format it as a Markdown table.`
+            When responding with list or tabular data such as artifacts, logs, or statuses, always format it as a Markdown table.
+            IMPORTANT — Message ID vs Application Message ID: CPI message GUIDs are long alphanumeric strings (e.g. "AGqzMlDYlHy3..."). Any other identifier the user provides — including purchase order numbers (PO), sales order numbers (SO), invoice numbers, or any short numeric or business document ID — is NOT a CPI message GUID. Treat all such identifiers as an ApplicationMessageId and call the findMessageByApplicationId tool to look them up. Never call getMessageStatus with a non-GUID identifier.`
         },
         ...historyMessages,
         { role: 'user', content: userMessage }

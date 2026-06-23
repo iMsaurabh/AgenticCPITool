@@ -18,7 +18,8 @@ const express = require('express');
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
 const { getMcpToolDefinitions, getToolConfig } = require('./tools/toolLoader');
-const { executeTool } = require('./services/toolExecutor');
+const { executeTool, clearTokenCache } = require('./services/toolExecutor');
+const runtimeCredentials = require('./config/runtimeCredentials');
 
 const app = express();
 app.use(express.json());
@@ -51,6 +52,23 @@ let runtimeMockMode = process.env.USE_MOCK === 'true';
 function getMockMode() {
     return runtimeMockMode;
 }
+
+// admin endpoint — receive CPI credentials from backend proxy
+// credentials are stored in process memory only, never written to disk
+// token cache is cleared so the next call fetches a fresh token
+app.post('/admin/credentials', (req, res) => {
+    const { cpiBaseUrl, tokenUrl, clientId, clientSecret } = req.body;
+
+    if (!cpiBaseUrl || !tokenUrl || !clientId || !clientSecret) {
+        return res.status(400).json({ success: false, error: 'All credential fields are required' });
+    }
+
+    runtimeCredentials.setCredentials({ cpiBaseUrl, tokenUrl, clientId, clientSecret });
+    clearTokenCache();
+
+    console.log('[CPI MCP] Runtime credentials updated — token cache cleared');
+    res.json({ success: true, message: 'Credentials updated' });
+});
 
 // admin endpoint — set mock mode at runtime
 app.post('/admin/mock', (req, res) => {

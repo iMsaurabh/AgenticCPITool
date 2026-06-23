@@ -192,23 +192,31 @@ export function NotificationProvider({ children }) {
     }
   }, [addToast, addNotification, processBatch])
 
-  // connect to scheduler SSE on mount
+  // stable ref so onmessage always calls the latest handler
+  // without the EventSource being recreated on every render
+  const handleSseEventRef = useRef(null)
+  handleSseEventRef.current = handleSseEvent
+
+  // connect to scheduler SSE once on mount — never tear down mid-session
   useEffect(() => {
     const schedulerUrl = import.meta.env.VITE_SCHEDULER_MCP_URL || 'http://localhost:3002'
-    const eventSource = new EventSource(`${schedulerUrl.replace('/mcp', '')}/events`)
+    const url = `${schedulerUrl.replace('/mcp', '')}/events`
+
+    const eventSource = new EventSource(url)
 
     eventSource.onopen = () => setSseConnected(true)
-    eventSource.onmessage = handleSseEvent
+    // delegate to ref so handler updates don't close the connection
+    eventSource.onmessage = (event) => handleSseEventRef.current?.(event)
     eventSource.onerror = () => {
       setSseConnected(false)
-      // EventSource auto-reconnects on error
+      // EventSource reconnects automatically per the spec
     }
 
     return () => {
       eventSource.close()
       if (batchTimer.current) clearTimeout(batchTimer.current)
     }
-  }, [handleSseEvent])
+  }, []) // empty — create once, never recreate
 
   // markAllRead resets unread count
   function markAllRead() {

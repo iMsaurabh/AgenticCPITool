@@ -192,13 +192,18 @@ async function callTool(toolName, params) {
 }
 
 // getConnectedServers returns list of connected server names
-// used by admin API to show connection status
+// used by admin UI to show connection status and resolve admin endpoints
 function getConnectedServers() {
-    return Object.keys(serverClients).map(name => ({
-        name,
-        connected: true,
-        toolCount: allTools.filter(t => toolServerMap[t.name] === name).length
-    }));
+    return Object.keys(serverClients).map(name => {
+        const config = mcpConfig.servers.find(s => s.name === name);
+        return {
+            name,
+            connected: true,
+            toolCount: allTools.filter(t => toolServerMap[t.name] === name).length,
+            // adminUrl is the HTTP base without /mcp — frontend uses it to call /admin/tools
+            adminUrl: config?.url?.replace('/mcp', '') || null
+        };
+    });
 }
 
 module.exports = {

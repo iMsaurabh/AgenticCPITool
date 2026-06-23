@@ -148,6 +148,25 @@ app.get('/health', (req, res) => {
     });
 });
 
+// admin — list registered MCP tools (read-only, built-in)
+// returns tools in the same shape as CPI/Excel /admin/tools
+// so the frontend McpAdminPanel can display them uniformly
+app.get('/admin/tools', (req, res) => {
+    const tools = schedulerTools.map(t => ({
+        name: t.name,
+        description: t.description,
+        method: 'MCP',
+        requiresCsrf: false,
+        parameters: Object.entries(t.parameters.properties || {}).map(([name, def]) => ({
+            name,
+            type: def.type,
+            required: (t.parameters.required || []).includes(name),
+            description: def.description || ''
+        }))
+    }));
+    res.json({ tools });
+});
+
 // admin — list all jobs (for UI jobs panel)
 app.get('/admin/jobs', (req, res) => {
     res.json({ jobs: jobStore.getAllJobs() });

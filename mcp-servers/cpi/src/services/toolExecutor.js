@@ -10,12 +10,19 @@
 // full execution support without any code changes here.
 
 const axios = require('axios');
+const runtimeCredentials = require('../config/runtimeCredentials');
 
 // tokenCache stores OAuth access token in memory
 let tokenCache = {
     accessToken: null,
     expiresAt: null
 };
+
+// clearTokenCache is called when credentials change so the next
+// tool call fetches a fresh token with the new credentials
+function clearTokenCache() {
+    tokenCache = { accessToken: null, expiresAt: null };
+}
 
 // at top of toolExecutor.js
 // lazy require to avoid circular dependency
@@ -35,13 +42,15 @@ async function getAccessToken() {
             return tokenCache.accessToken;
         }
 
+        const creds = runtimeCredentials.getCredentials();
+
         const response = await axios.post(
-            process.env.CPI_TOKEN_URL,
+            creds.tokenUrl,
             new URLSearchParams({ grant_type: 'client_credentials' }),
             {
                 auth: {
-                    username: process.env.CPI_CLIENT_ID,
-                    password: process.env.CPI_CLIENT_SECRET
+                    username: creds.clientId,
+                    password: creds.clientSecret
                 },
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             }
@@ -61,8 +70,9 @@ async function getAccessToken() {
 }
 
 function getApiClient(accessToken) {
+    const { cpiBaseUrl } = runtimeCredentials.getCredentials();
     return axios.create({
-        baseURL: process.env.CPI_BASE_URL,
+        baseURL: cpiBaseUrl,
         headers: {
             Authorization: `Bearer ${accessToken}`,
             Accept: 'application/json',
@@ -111,10 +121,15 @@ function buildQueryParams(params, parameters, staticQueryParams) {
                 : paramConfig.default;
 
             if (value !== undefined && value !== '') {
-                // use queryParamName if defined, otherwise use param name
                 const queryKey = paramConfig.queryParamName || paramConfig.name;
-                // wrap in single quotes if quoted flag is set
-                queryParams[queryKey] = paramConfig.quoted ? `'${value}'` : value;
+
+                if (paramConfig.filterTemplate) {
+                    // substitute the runtime value into the OData filter template
+                    // e.g. "ApplicationMessageId eq '{value}'" → "ApplicationMessageId eq '20'"
+                    queryParams[queryKey] = paramConfig.filterTemplate.replace('{value}', value);
+                } else {
+                    queryParams[queryKey] = paramConfig.quoted ? `'${value}'` : value;
+                }
             }
         }
     }
@@ -263,4 +278,4 @@ async function executeTool(toolConfig, params) {
     }
 }
 
-module.exports = { executeTool };
+module.exports = { executeTool, clearTokenCache };

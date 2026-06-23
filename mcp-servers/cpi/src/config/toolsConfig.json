@@ -231,6 +231,35 @@
             }
         },
         {
+            "name": "findMessageByApplicationId",
+            "description": "Find a CPI message processing log by ApplicationMessageId using OData filter. Use this when the user provides an application message ID instead of a CPI message ID.",
+            "method": "GET",
+            "endpoint": "/api/v1/MessageProcessingLogs",
+            "requiresCsrf": false,
+            "parameters": [
+                {
+                    "name": "ApplicationMessageId",
+                    "type": "string",
+                    "required": true,
+                    "description": "The application message ID to filter by",
+                    "location": "query",
+                    "queryParamName": "$filter",
+                    "quoted": false,
+                    "filterTemplate": "ApplicationMessageId eq '{value}'"
+                }
+            ],
+            "queryParams": {
+                "$format": "json"
+            },
+            "mockResponse": {
+                "MessageGuid": "MOCK-GUID-001",
+                "ApplicationMessageId": "MOCK-APP-ID-001",
+                "Status": "COMPLETED",
+                "LogStart": "2024-01-01T00:00:00Z",
+                "LogEnd": "2024-01-01T00:01:00Z"
+            }
+        },
+        {
             "name": "updateIFlowConfiguration",
             "description": "Update the value of a specific configuration parameter of an integration flow. Use this when the user wants to change or set a config parameter value. This is a write operation — always confirm the artifact ID, parameter key, and new value with the user before executing. Do not deploy the artifact. In response do mention that user needs to deploy artifact via separate request unless mentioned explicitely.",
             "method": "PUT",

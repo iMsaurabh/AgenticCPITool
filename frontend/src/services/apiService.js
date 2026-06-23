@@ -156,6 +156,14 @@ const apiService = {
       .replace('/mcp', '')
     const response = await axios.post(`${baseUrl}/admin/jobs`, jobConfig)
     return response.data
+  },
+
+  // saveEnvironment pushes CPI credentials to the backend which proxies
+  // them to the CPI MCP server's in-memory credential store.
+  // The clientSecret never reaches the CPI MCP server directly from the browser.
+  async saveEnvironment(env) {
+    const response = await api.post('/api/environment', env)
+    return response.data
   }
 
 }

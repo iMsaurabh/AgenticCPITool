@@ -1,50 +1,75 @@
-// ProviderSettings contains the AI provider selector, API key input
-// and mock mode toggle. Extracted from SettingsPanel for sidebar use.
-
 import { useState, useEffect } from 'react'
 import { useSettings } from '../../context/SettingsContext'
-import apiService from '../../services/apiService'
+
+function EyeOffIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  )
+}
+
+function EyeIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
 
 function ProviderSettings() {
   const { settings, providers, providersLoading, updateSettings } = useSettings()
-  const [form, setForm] = useState({
-    provider: settings.provider,
-    apiKey: settings.apiKey,
-    mockMode: settings.mockMode
-  })
+  const [apiKeyDraft, setApiKeyDraft] = useState(settings.apiKey)
   const [showApiKey, setShowApiKey] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // sync form when settings change externally
+  // keep draft in sync if settings change from outside this component
   useEffect(() => {
-    setForm({
-      provider: settings.provider,
-      apiKey: settings.apiKey,
-      mockMode: settings.mockMode
-    })
-  }, [settings])
+    setApiKeyDraft(settings.apiKey)
+  }, [settings.apiKey])
 
-  function handleSave() {
-    updateSettings(form)
+  function flash() {
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setTimeout(() => setSaved(false), 1500)
   }
 
-  return (
-    <div className="space-y-4">
+  function handleProviderChange(provider) {
+    updateSettings({ provider })
+    flash()
+  }
 
-      {/* AI Provider */}
+  function handleMockToggle() {
+    updateSettings({ mockMode: !settings.mockMode })
+    flash()
+  }
+
+  function handleApiKeyBlur() {
+    if (apiKeyDraft !== settings.apiKey) {
+      updateSettings({ apiKey: apiKeyDraft })
+      flash()
+    }
+  }
+
+  const inputClass = `
+    w-full border border-[#e2e8f0] rounded-lg px-3 py-2 text-sm text-[#0f172a]
+    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white
+  `
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1.5'
+
+  return (
+    <div className="space-y-5">
+
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">
-          AI Provider
-        </label>
+        <label className={labelClass}>AI Provider</label>
         {providersLoading ? (
-          <div className="h-9 bg-gray-100 rounded-lg animate-pulse" />
+          <div className="h-9 bg-slate-100 rounded-lg animate-pulse" />
         ) : (
           <select
-            value={form.provider}
-            onChange={e => setForm(p => ({ ...p, provider: e.target.value }))}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={settings.provider}
+            onChange={e => handleProviderChange(e.target.value)}
+            className={inputClass}
           >
             {providers.map(p => (
               <option key={p} value={p}>
@@ -55,69 +80,51 @@ function ProviderSettings() {
         )}
       </div>
 
-      {/* API Key */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">
-          API Key
-        </label>
+        <label className={labelClass}>API Key</label>
         <div className="relative">
           <input
             type={showApiKey ? 'text' : 'password'}
-            value={form.apiKey}
-            onChange={e => setForm(p => ({ ...p, apiKey: e.target.value }))}
-            placeholder={`${form.provider} API key (optional)`}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={apiKeyDraft}
+            onChange={e => setApiKeyDraft(e.target.value)}
+            onBlur={handleApiKeyBlur}
+            placeholder={`${settings.provider} API key (optional)`}
+            className={`${inputClass} pr-9`}
           />
-          <button
-            onClick={() => setShowApiKey(p => !p)}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          <button onClick={() => setShowApiKey(p => !p)}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
           >
-            {showApiKey ? (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            )}
+            {showApiKey ? <EyeOffIcon /> : <EyeIcon />}
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-1">Leave empty to use server key</p>
+        <p className="text-xs text-[#94a3b8] mt-1">Saved automatically when you leave the field</p>
       </div>
 
-      {/* Mock Mode */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between py-1">
         <div>
-          <p className="text-xs font-medium text-gray-500">Mock Mode</p>
-          <p className="text-xs text-gray-400">
-            {form.mockMode ? 'Using fake CPI data' : 'Using real CPI API'}
+          <p className="text-xs font-medium text-slate-500">Mock Mode</p>
+          <p className="text-xs text-[#94a3b8] mt-0.5">
+            {settings.mockMode ? 'Using simulated CPI data' : 'Calling real CPI API'}
           </p>
         </div>
         <button
-          onClick={() => setForm(p => ({ ...p, mockMode: !p.mockMode }))}
+          onClick={handleMockToggle}
           className={`
-            relative h-6 w-11 rounded-full transition-colors duration-200
-            ${form.mockMode ? 'bg-blue-600' : 'bg-gray-300'}
+            relative h-6 w-11 rounded-full transition-colors duration-200 flex-shrink-0
+            ${settings.mockMode ? 'bg-indigo-500' : 'bg-slate-300'}
           `}
         >
           <span className={`
             absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-sm
             transition-transform duration-200
-            ${form.mockMode ? 'translate-x-5' : 'translate-x-0'}
+            ${settings.mockMode ? 'translate-x-5' : 'translate-x-0'}
           `} />
         </button>
       </div>
 
-      {/* Save button */}
-      <button
-        onClick={handleSave}
-        className="w-full bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        {saved ? '✓ Saved' : 'Save Settings'}
-      </button>
+      {saved && (
+        <p className="text-xs text-green-600 text-right">✓ Saved</p>
+      )}
 
     </div>
   )
