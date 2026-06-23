@@ -47,12 +47,14 @@ function useChat(settings) {
 
         try {
             // send to backend — provider and apiKey come from settings
+            // timezone is detected from the browser for local-time scheduling
             const result = await apiService.sendMessage(
                 text.trim(),
                 settings?.provider || 'groq',
                 settings?.apiKey || null,
                 settings?.mockMode,
-                messages  // send full history
+                messages,
+                Intl.DateTimeFormat().resolvedOptions().timeZone
             )
 
             // add agent response to conversation

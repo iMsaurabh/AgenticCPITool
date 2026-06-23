@@ -178,7 +178,7 @@ function startJob(job) {
             console.error(`[Scheduler] Unhandled error in job ${job.id}:`, err.message);
         }
     }, {
-        timezone: 'UTC' // all schedules run in UTC
+        timezone: job.schedule.timezone || 'UTC'
     });
 
     activeJobs.set(job.id, task);

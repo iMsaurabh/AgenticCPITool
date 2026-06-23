@@ -1,10 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 function ChatInput({ onSend, onUpload, loading }) {
   const [text, setText] = useState('')
   const [selectedFile, setSelectedFile] = useState(null)
   const textareaRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  // restore focus when the response arrives and loading flips to false
+  useEffect(() => {
+    if (!loading) {
+      textareaRef.current?.focus()
+    }
+  }, [loading])
 
   function handleSend() {
     if (loading) return
@@ -19,8 +26,6 @@ function ChatInput({ onSend, onUpload, loading }) {
       onSend(text)
       setText('')
     }
-
-    setTimeout(() => textareaRef.current?.focus(), 0)
   }
 
   function handleKeyDown(e) {

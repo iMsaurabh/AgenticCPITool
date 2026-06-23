@@ -8,7 +8,7 @@ const axios = require('axios');
 const mcpClient = require('../mcp/mcpClient');
 
 router.post('/chat', async (req, res, next) => {
-    const { message, provider, apiKey, mockMode, history } = req.body
+    const { message, provider, apiKey, mockMode, history, timezone } = req.body
 
     if (!message || typeof message !== 'string' || message.trim() === '') {
         return responseFormatter.error(res, 'message is required and must be a non-empty string', 400)
@@ -22,7 +22,7 @@ router.post('/chat', async (req, res, next) => {
         const result = await orchestrator.run(
             providerInstance,
             message.trim(),
-            { mockMode, history: history || [] }
+            { mockMode, history: history || [], timezone: timezone || 'UTC' }
         )
 
         // send notifications for certain tool executions

@@ -175,6 +175,20 @@ async function callTool(toolName, params) {
         arguments: params
     });
 
+    // MCP SDK converts tool handler exceptions into {isError: true} responses
+    // instead of throwing on the client side — check explicitly so the
+    // orchestrator's try/catch can handle them rather than the LLM seeing
+    // raw error text as a tool result
+    if (response.isError) {
+        const content = response.content || [];
+        const textContent = content.find(c => c.type === 'text');
+        const errorText = textContent?.text || 'Tool execution failed';
+        // try to extract a readable message from axios errors embedded in the text
+        const match = errorText.match(/status code (\d+)/) || errorText.match(/"message":"([^"]+)"/)
+        const detail = match ? match[0] : errorText.slice(0, 200)
+        throw new Error(`${toolName} failed: ${detail}`)
+    }
+
     // MCP tool responses contain content array
     // extract text content and parse JSON
     const content = response.content || [];

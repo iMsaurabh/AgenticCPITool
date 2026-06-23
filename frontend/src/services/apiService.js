@@ -24,12 +24,13 @@ const apiService = {
 
   // sendMessage sends a chat message to the orchestrator agent
   // provider and apiKey come from user settings
-  async sendMessage(message, provider, apiKey, mockMode, history = []) {
+  async sendMessage(message, provider, apiKey, mockMode, history = [], timezone) {
     const response = await api.post('/api/chat', {
       message,
       provider,
       apiKey: apiKey || null,
       mockMode: mockMode !== undefined ? mockMode : true,
+      timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       // send only last 10 messages to avoid token limit issues
       history: history.slice(-5).map(m => ({
         role: m.role === 'user' ? 'user' : 'assistant',
@@ -123,6 +124,14 @@ const apiService = {
     const baseUrl = (import.meta.env.VITE_SCHEDULER_MCP_URL || 'http://localhost:3002/mcp')
       .replace('/mcp', '')
     const response = await axios.get(`${baseUrl}/admin/jobs/${jobId}/history`)
+    return response.data.executions
+  },
+
+  // getAllExecutions fetches all execution records across all jobs
+  async getAllExecutions() {
+    const baseUrl = (import.meta.env.VITE_SCHEDULER_MCP_URL || 'http://localhost:3002/mcp')
+      .replace('/mcp', '')
+    const response = await axios.get(`${baseUrl}/admin/executions`)
     return response.data.executions
   },
 

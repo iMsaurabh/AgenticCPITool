@@ -44,11 +44,13 @@ const schedulerToolExecutor = {
             ? JSON.parse(params.parameters)
             : (params.parameters || {});
 
+        const tz = params.timezone || 'UTC'
         const schedule = {
             frequency: params.frequency,
-            days: parseDays(params.days),  // ← use parseDays
+            days: parseDays(params.days),
             time: params.time,
-            dayOfMonth: params.dayOfMonth ? toNumber(params.dayOfMonth) : undefined
+            dayOfMonth: params.dayOfMonth ? toNumber(params.dayOfMonth) : undefined,
+            timezone: tz
         };
 
         const cronExpression = buildCronExpression(schedule);
@@ -69,7 +71,7 @@ const schedulerToolExecutor = {
                 delayMinutes: 5,
                 timeoutSeconds: 30
             },
-            message: `Please confirm: "${params.jobName}" will run ${buildScheduleDescription(schedule)} UTC using tool "${params.tool}" with parameters ${JSON.stringify(parsedParams)}. Reply "yes" to confirm or "no" to cancel.`
+            message: `Please confirm: "${params.jobName}" will run ${buildScheduleDescription(schedule)} using tool "${params.tool}" with parameters ${JSON.stringify(parsedParams)}. Reply "yes" to confirm or "no" to cancel.`
         };
     },
 
@@ -79,12 +81,13 @@ const schedulerToolExecutor = {
             ? JSON.parse(params.parameters)
             : (params.parameters || {});
 
+        const tz = params.timezone || 'UTC'
         const schedule = {
             frequency: params.frequency,
             days: parseDays(params.days),
             time: params.time,
             dayOfMonth: params.dayOfMonth ? toNumber(params.dayOfMonth) : undefined,
-            timezone: 'UTC',
+            timezone: tz,
             cron: buildCronExpression({
                 frequency: params.frequency,
                 days: params.days || [],
@@ -233,7 +236,9 @@ const schedulerToolExecutor = {
 
 // buildScheduleDescription converts schedule config to human readable string
 function buildScheduleDescription(schedule) {
-    const time = `${schedule.time} UTC`;
+    const tz = schedule.timezone || 'UTC'
+    const tzLabel = tz === 'UTC' ? 'UTC' : tz.split('/').pop().replace(/_/g, ' ')
+    const time = `${schedule.time} ${tzLabel}`;
     switch (schedule.frequency) {
         case 'once': return `once at ${time}`;
         case 'daily': return `daily at ${time}`;

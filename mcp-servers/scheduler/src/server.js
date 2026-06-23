@@ -244,7 +244,7 @@ app.post('/admin/jobs', (req, res) => {
         // build cron expression from schedule config
         const cron = jobScheduler.buildCronExpression(jobConfig.schedule);
         jobConfig.schedule.cron = cron;
-        jobConfig.schedule.timezone = 'UTC';
+        jobConfig.schedule.timezone = jobConfig.schedule.timezone || 'UTC';
 
         const job = jobStore.createJob(jobConfig);
         jobScheduler.startJob(job);

@@ -6,9 +6,10 @@ function MessageBubble({ message }) {
     const isError = message.error
 
     const time = message.timestamp
-        ? new Date(message.timestamp).toLocaleTimeString([], {
+        ? new Date(message.timestamp).toLocaleTimeString(undefined, {
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
         })
         : ''
 

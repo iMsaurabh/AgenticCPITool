@@ -1,5 +1,54 @@
 import { useState, useEffect, useCallback } from 'react'
 import apiService from '../../services/apiService'
+import { useNotifications } from '../../context/NotificationContext'
+
+// computeNextRun estimates the next fire time of a job for sort ordering.
+// Uses hourCycle h23 to avoid the Node.js h24 midnight bug (00:xx → "24:xx").
+function computeNextRun(job) {
+  if (!job.enabled || !job.schedule?.time) return null
+  const [h, m] = job.schedule.time.split(':').map(Number)
+  if (isNaN(h) || isNaN(m)) return null
+  const tz = job.schedule.timezone || 'UTC'
+  const now = new Date()
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(now).map(p => [p.type, p.value])
+  )
+  const passedToday = parseInt(parts.hour) > h || (parseInt(parts.hour) === h && parseInt(parts.minute) >= m)
+  const candidate = new Date(now)
+  candidate.setSeconds(0, 0)
+  switch (job.schedule.frequency) {
+    case 'once':
+    case 'daily': {
+      if (passedToday) candidate.setDate(candidate.getDate() + 1)
+      candidate.setHours(h, m, 0, 0)
+      return candidate
+    }
+    case 'weekly': {
+      const dayMap = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }
+      const days = (job.schedule.days || []).map(d => dayMap[d.toLowerCase()]).filter(n => n !== undefined)
+      if (!days.length) return null
+      const todayDow = now.getDay()
+      let minDiff = 8
+      for (const dow of days) {
+        let diff = (dow - todayDow + 7) % 7
+        if (diff === 0 && passedToday) diff = 7
+        if (diff < minDiff) minDiff = diff
+      }
+      candidate.setDate(candidate.getDate() + minDiff)
+      candidate.setHours(h, m, 0, 0)
+      return candidate
+    }
+    case 'monthly': {
+      const dom = job.schedule.dayOfMonth || 1
+      candidate.setDate(dom)
+      candidate.setHours(h, m, 0, 0)
+      if (candidate <= now) candidate.setMonth(candidate.getMonth() + 1)
+      return candidate
+    }
+    default: return null
+  }
+}
 
 // ─── Schedule Builder ────────────────────────────────────────────────
 
@@ -9,10 +58,15 @@ function ScheduleBuilder({ value, onChange }) {
   const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
   const minutes = ['00', '15', '30', '45']
 
+  // auto-detect the user's local IANA timezone
+  const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const tzLabel = userTz.split('/').pop().replace(/_/g, ' ')
+
   const inputClass = 'border border-[#e2e8f0] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white'
 
   function update(field, val) {
-    onChange({ ...value, [field]: val })
+    // always include the detected timezone so scheduler uses local time
+    onChange({ ...value, [field]: val, timezone: userTz })
   }
 
   function toggleDay(day) {
@@ -20,7 +74,7 @@ function ScheduleBuilder({ value, onChange }) {
     const next = days.includes(day)
       ? days.filter(d => d !== day)
       : [...days, day]
-    update('days', next)
+    onChange({ ...value, days: next, timezone: userTz })
   }
 
   return (
@@ -77,7 +131,10 @@ function ScheduleBuilder({ value, onChange }) {
       )}
 
       <div>
-        <label className="block text-xs text-slate-500 mb-1">Time (UTC)</label>
+        <label className="block text-xs text-slate-500 mb-1">
+          Time
+          <span className="ml-1 text-indigo-500 font-normal">({tzLabel})</span>
+        </label>
         <div className="flex items-center gap-2">
           <select
             value={(value.time || '09:00').split(':')[0]}
@@ -94,16 +151,8 @@ function ScheduleBuilder({ value, onChange }) {
           >
             {minutes.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <span className="text-xs text-[#94a3b8]">UTC</span>
         </div>
-        <p className="text-xs text-[#94a3b8] mt-1">
-          Local: {(() => {
-            const [h, m] = (value.time || '09:00').split(':')
-            const utcDate = new Date()
-            utcDate.setUTCHours(parseInt(h), parseInt(m), 0, 0)
-            return utcDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          })()}
-        </p>
+        <p className="text-xs text-[#94a3b8] mt-1">Detected timezone: {userTz}</p>
       </div>
 
     </div>
@@ -117,7 +166,12 @@ function CreateJobForm({ availableTools, onJobCreated, onCancel }) {
     name: '',
     tool: '',
     paramValues: {},
-    schedule: { frequency: 'daily', days: [], time: '09:00' },
+    schedule: {
+      frequency: 'daily',
+      days: [],
+      time: '09:00',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    },
     retry: { enabled: true, maxRetries: 2, delayMinutes: 5, timeoutSeconds: 30 }
   })
   const [loading, setLoading] = useState(false)
@@ -428,23 +482,29 @@ function JobCard({ job, onRefresh }) {
     }
   }
 
-  function getLocalTime(utcTime) {
-    if (!utcTime) return ''
-    const [h, m] = utcTime.split(':')
-    const d = new Date()
-    d.setUTCHours(parseInt(h), parseInt(m), 0, 0)
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
   function buildScheduleLabel(schedule) {
     if (!schedule) return '—'
-    const time = `${schedule.time} UTC (${getLocalTime(schedule.time)} local)`
+    const tz = schedule.timezone || 'UTC'
+    const isUtc = tz === 'UTC'
+    // for UTC-stored legacy jobs, convert to local time for display
+    // for local-timezone jobs, the stored time IS local — just show it
+    let timeDisplay
+    if (isUtc) {
+      const [h, m] = (schedule.time || '00:00').split(':')
+      const d = new Date()
+      d.setUTCHours(parseInt(h), parseInt(m), 0, 0)
+      const local = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timeDisplay = `${local} (local)`
+    } else {
+      const tzLabel = tz.split('/').pop().replace(/_/g, ' ')
+      timeDisplay = `${schedule.time} ${tzLabel}`
+    }
     switch (schedule.frequency) {
-      case 'once': return `Once at ${time}`
-      case 'daily': return `Daily at ${time}`
-      case 'weekly': return `Weekly on ${(schedule.days || []).join(', ')} at ${time}`
-      case 'monthly': return `Monthly on day ${schedule.dayOfMonth || 1} at ${time}`
-      default: return time
+      case 'once': return `Once at ${timeDisplay}`
+      case 'daily': return `Daily at ${timeDisplay}`
+      case 'weekly': return `Weekly on ${(schedule.days || []).join(', ')} at ${timeDisplay}`
+      case 'monthly': return `Monthly on day ${schedule.dayOfMonth || 1} at ${timeDisplay}`
+      default: return timeDisplay
     }
   }
 
@@ -543,10 +603,51 @@ function JobCard({ job, onRefresh }) {
   )
 }
 
+// ─── Execution Card ──────────────────────────────────────────────────
+
+function ExecutionCard({ execution }) {
+  const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const statusColor = {
+    SUCCESS: 'text-green-700 bg-green-100',
+    FAILED:  'text-red-700 bg-red-100',
+  }[execution.status] || 'text-slate-600 bg-slate-100'
+
+  const ts = execution.startedAt
+    ? new Date(execution.startedAt).toLocaleString(undefined, {
+        month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+        timeZone: userTz
+      })
+    : ''
+
+  return (
+    <div className="bg-white border border-[#e2e8f0] rounded-lg px-3 py-2 flex items-center gap-3">
+      <span className={`text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${statusColor}`}>
+        {execution.status}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-[#0f172a] truncate">{execution.jobName}</p>
+        {execution.error
+          ? <p className="text-xs text-red-500 truncate">{execution.error}</p>
+          : <p className="text-xs text-[#94a3b8] truncate">{execution.tool}</p>
+        }
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className="text-xs text-slate-500 whitespace-nowrap">{ts}</p>
+        {execution.duration != null && (
+          <p className="text-xs text-[#94a3b8]">{(execution.duration / 1000).toFixed(1)}s</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Jobs Panel ─────────────────────────────────────────────────
 
 function JobsPanel({ inline = false }) {
+  const { lastJobEvent } = useNotifications()
   const [jobs, setJobs] = useState([])
+  const [executions, setExecutions] = useState([])
   const [availableTools, setAvailableTools] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -563,6 +664,15 @@ function JobsPanel({ inline = false }) {
     }
   }, [])
 
+  const fetchExecutions = useCallback(async () => {
+    try {
+      const data = await apiService.getAllExecutions()
+      setExecutions(data || [])
+    } catch (err) {
+      console.error('Failed to fetch executions:', err)
+    }
+  }, [])
+
   const fetchTools = useCallback(async () => {
     try {
       const cpiUrl = import.meta.env.VITE_CPI_MCP_URL || 'http://localhost:3001/mcp'
@@ -573,22 +683,65 @@ function JobsPanel({ inline = false }) {
     }
   }, [])
 
+  const refreshAll = useCallback(() => {
+    fetchJobs()
+    fetchExecutions()
+  }, [fetchJobs, fetchExecutions])
+
   useEffect(() => {
     if (!expanded) return
     fetchJobs()
+    fetchExecutions()
     fetchTools()
-    const interval = setInterval(fetchJobs, 30000)
+    const interval = setInterval(refreshAll, 30000)
     return () => clearInterval(interval)
-  }, [expanded, fetchJobs, fetchTools])
+  }, [expanded, fetchJobs, fetchExecutions, fetchTools, refreshAll])
+
+  // refresh immediately when any job:started or job:complete SSE event fires
+  useEffect(() => {
+    if (!expanded || lastJobEvent === 0) return
+    refreshAll()
+  }, [lastJobEvent, expanded, refreshAll])
+
+  // ── derived lists ────────────────────────────────────────────────
+  const scheduledJobs = jobs
+    .filter(j => j.enabled)
+    .map(j => ({ j, next: computeNextRun(j) }))
+    .sort((a, b) => {
+      if (!a.next && !b.next) return 0
+      if (!a.next) return 1
+      if (!b.next) return -1
+      return a.next - b.next
+    })
+    .map(({ j }) => j)
+
+  const completedExecutions = executions
+    .filter(e => e.status === 'SUCCESS' || e.status === 'FAILED')
+    .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt))
+
+  // helper: human-readable "next run" label
+  function nextRunLabel(job) {
+    const next = computeNextRun(job)
+    if (!next) return null
+    const diffMs = next - Date.now()
+    if (diffMs < 0) return 'overdue'
+    if (diffMs < 60000) return 'in < 1 min'
+    if (diffMs < 3600000) return `in ${Math.round(diffMs / 60000)} min`
+    if (diffMs < 86400000) return `in ${Math.round(diffMs / 3600000)}h`
+    return next.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+      ' ' + next.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  }
 
   const content = (
-    <div className="space-y-3">
+    <div className="space-y-5">
+
+      {/* toolbar */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-[#94a3b8]">
           {jobs.length > 0 ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''}` : ''}
         </span>
         <button
-          onClick={fetchJobs}
+          onClick={refreshAll}
           className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -599,6 +752,7 @@ function JobsPanel({ inline = false }) {
         </button>
       </div>
 
+      {/* create job */}
       {!showCreateForm && (
         <button
           onClick={() => setShowCreateForm(true)}
@@ -607,24 +761,25 @@ function JobsPanel({ inline = false }) {
           + Schedule New Job
         </button>
       )}
-
       {showCreateForm && (
         <CreateJobForm
           availableTools={availableTools}
-          onJobCreated={() => { setShowCreateForm(false); fetchJobs(); }}
+          onJobCreated={() => { setShowCreateForm(false); refreshAll() }}
           onCancel={() => setShowCreateForm(false)}
         />
       )}
 
+      {/* loading skeleton */}
       {loading && (
         <div className="space-y-2">
           {[1, 2].map(i => (
-            <div key={i} className="h-20 bg-slate-100 rounded animate-pulse" />
+            <div key={i} className="h-16 bg-slate-100 rounded animate-pulse" />
           ))}
         </div>
       )}
 
-      {!loading && jobs.length === 0 && !showCreateForm && (
+      {/* empty state */}
+      {!loading && jobs.length === 0 && executions.length === 0 && !showCreateForm && (
         <div className="text-center py-8">
           <svg className="w-8 h-8 text-slate-200 mx-auto mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -636,9 +791,54 @@ function JobsPanel({ inline = false }) {
         </div>
       )}
 
-      {!loading && jobs.map(job => (
-        <JobCard key={job.id} job={job} onRefresh={fetchJobs} />
-      ))}
+      {/* ── Scheduled section ─────────────────────────────────── */}
+      {!loading && (scheduledJobs.length > 0 || jobs.filter(j => !j.enabled).length > 0) && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Scheduled</span>
+            {scheduledJobs.length > 0 && (
+              <span className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-medium">
+                {scheduledJobs.length}
+              </span>
+            )}
+          </div>
+          {scheduledJobs.length === 0 ? (
+            <p className="text-xs text-[#94a3b8]">No active jobs right now</p>
+          ) : (
+            <div className="space-y-2">
+              {scheduledJobs.map(job => {
+                const label = nextRunLabel(job)
+                return (
+                  <div key={job.id}>
+                    {label && (
+                      <p className="text-xs text-indigo-500 font-medium mb-0.5 pl-1">↑ Next: {label}</p>
+                    )}
+                    <JobCard job={job} onRefresh={refreshAll} />
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── History section ────────────────────────────────────── */}
+      {!loading && completedExecutions.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">History</span>
+            <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-medium">
+              {completedExecutions.length}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {completedExecutions.map(exec => (
+              <ExecutionCard key={exec.id} execution={exec} />
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 

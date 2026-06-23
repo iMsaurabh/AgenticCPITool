@@ -5,9 +5,9 @@
 const schedulerTools = [
     {
         name: 'previewJob',
-        description: `Preview a scheduled job before creating it. Use this when the user wants 
-      to schedule any task or job. Gather all required information first, then call this tool 
-      to show the user a confirmation summary before creating the job. Always call previewJob 
+        description: `Preview a scheduled job before creating it. Use this when the user wants
+      to schedule any task or job. Gather all required information first, then call this tool
+      to show the user a confirmation summary before creating the job. Always call previewJob
       BEFORE createJob. Never create a job without user confirmation.`,
         parameters: {
             type: 'object',
@@ -20,7 +20,8 @@ const schedulerTools = [
                     type: 'string',
                     description: 'Days of week for weekly jobs as JSON string e.g. "[\"monday\",\"tuesday\"]" or "[]" for non-weekly'
                 },
-                time: { type: 'string', description: 'Execution time in UTC HH:MM format e.g. 09:00' },
+                time: { type: 'string', description: 'Execution time in HH:MM format in the user\'s local timezone e.g. 09:00' },
+                timezone: { type: 'string', description: 'IANA timezone of the user e.g. Europe/London, Asia/Kolkata, America/New_York. Always pass this from the system context.' },
                 dayOfMonth: { type: 'string', description: 'Day of month for monthly jobs as string e.g. "1"' },
                 retryEnabled: { type: 'string', description: 'Whether to retry on failure: "true" or "false"' },
                 maxRetries: { type: 'string', description: 'Maximum retry attempts as string e.g. "2"' }
@@ -31,8 +32,8 @@ const schedulerTools = [
 
     {
         name: 'createJob',
-        description: `Create a scheduled job after user has confirmed the preview. 
-      Only call this after the user has explicitly said yes, confirmed, or agreed 
+        description: `Create a scheduled job after user has confirmed the preview.
+      Only call this after the user has explicitly said yes, confirmed, or agreed
       to the job preview. Never call this without prior user confirmation.`,
         parameters: {
             type: 'object',
@@ -45,7 +46,8 @@ const schedulerTools = [
                     type: 'string',
                     description: 'Days of week for weekly jobs as JSON string e.g. "[\"monday\",\"tuesday\"]" or "[]" for non-weekly'
                 },
-                time: { type: 'string', description: 'Execution time in UTC HH:MM format' },
+                time: { type: 'string', description: 'Execution time in HH:MM format in the user\'s local timezone' },
+                timezone: { type: 'string', description: 'IANA timezone of the user e.g. Europe/London, Asia/Kolkata, America/New_York. Always pass this from the system context.' },
                 dayOfMonth: { type: 'string', description: 'Day of month for monthly jobs as string' },
                 retryEnabled: { type: 'string', description: 'Whether to retry on failure: "true" or "false"' },
                 maxRetries: { type: 'string', description: 'Maximum retry attempts as string' },

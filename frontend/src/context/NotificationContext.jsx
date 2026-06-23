@@ -24,6 +24,7 @@ export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [sseConnected, setSseConnected] = useState(false)
+  const [lastJobEvent, setLastJobEvent] = useState(0)
 
   // batch buffer — collects events before firing grouped toast
   const batchBuffer = useRef([])
@@ -155,12 +156,19 @@ export function NotificationProvider({ children }) {
         break
 
       case 'job:started':
-        // subtle gray toast — job is running
+        // toast + persistent notification — job is running
         addToast({
           status: 'info',
           title: data.job.name,
           message: `Running... (attempt ${data.job.attempt}/${data.job.maxAttempts})`
         })
+        addNotification({
+          status: 'info',
+          title: `${data.job.name} started`,
+          message: `Attempt ${data.job.attempt} of ${data.job.maxAttempts}`,
+          jobs: [data.job]
+        })
+        setLastJobEvent(prev => prev + 1)
         break
 
       case 'job:retry':
@@ -185,6 +193,7 @@ export function NotificationProvider({ children }) {
         // reset batch timer
         if (batchTimer.current) clearTimeout(batchTimer.current)
         batchTimer.current = setTimeout(processBatch, BATCH_WINDOW_MS)
+        setLastJobEvent(prev => prev + 1)
         break
 
       default:
@@ -235,6 +244,7 @@ export function NotificationProvider({ children }) {
       notifications,
       unreadCount,
       sseConnected,
+      lastJobEvent,
       dismissToast,
       markAllRead
     }}>
