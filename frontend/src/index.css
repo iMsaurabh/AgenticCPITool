@@ -1,10 +1,22 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Ubuntu", "Courier New", monospace;
+}
+
+/* Bump base font size up 2 Tailwind steps (16px → 20px).
+   All rem-based Tailwind sizes scale with this. */
+html {
+  font-size: 18px;
+  font-family: "Ubuntu", "Courier New", monospace;
+}
+
 @keyframes slide-in {
   from {
     opacity: 0;
     transform: translateX(100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
